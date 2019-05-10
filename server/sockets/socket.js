@@ -11,6 +11,8 @@ io.on('connection', (client) => {
 
     client.on('entrarChat', (usuario,callback) => {
 
+        let mensajeCreadoAlUnirse = crearMensaje('Administrador',`${usuario.nombre} se unio`);
+
         if (!usuario.nombre || !usuario.sala){
             return callback({
                 error:true,
@@ -18,32 +20,35 @@ io.on('connection', (client) => {
             });
         }
 
-        client.join(usuarios.sala);
+        client.join(usuario.sala);
 
         usuarios.agregarPersona(client.id,usuario.nombre,usuario.sala);
 
-        client.broadcast.to(usuario.sala).emit('listaPersonas',usuarios.getPersonasPorSala(usuario.sala));
-
+        client.broadcast.to(usuario.sala).emit('listaPersona',usuarios.getPersonasPorSala(usuario.sala));
+        client.broadcast.to(usuario.sala).emit('crearMensaje', mensajeCreadoAlUnirse);
         callback(usuarios.getPersonasPorSala(usuario.sala));
 
     });
 
-    client.on('crearMensaje', (data) => {
+    client.on('crearMensaje', (data,callback) => {
 
         let persona = usuarios.getPersona(client.id);
-
+        
         let mensaje = crearMensaje( persona.nombre, data.mensaje );
 
         client.broadcast.to(persona.sala).emit('crearMensaje', mensaje);
+        
+        callback(mensaje);
 
-    })
+    });
 
     client.on('disconnect', () => {
         let personaBorrada = usuarios.borrarPersona(client.id);
 
-        client.broadcast.to(personaBorrada.sala).emit('crearMensaje', crearMensaje('Administrador',`${personaBorrada.nombre} salio`));
-        //client.broadcast.to(personaBorrada.sala).emit('crearMensaje', {nombre:'Administrador',mensaje: 'salio'});
-        client.broadcast.to(personaBorrada.sala).emit('listaPersonas',usuarios.getPersonasPorSala(personaBorrada.sala));
+        let mensajeCreado = crearMensaje('Administrador',`${personaBorrada.nombre} salio`);
+        
+        client.broadcast.to(personaBorrada.sala).emit('crearMensaje', mensajeCreado);
+        client.broadcast.to(personaBorrada.sala).emit('listaPersona',usuarios.getPersonasPorSala(personaBorrada.sala));
 
     })
 
